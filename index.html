@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Katamari-Like Game</title>
+  <link rel="stylesheet" href="css/main.css">
+  <!-- Import Three.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+</head>
+<body>
+  <div id="game-container">
+    <div id="menu">
+      <h1>Katamari-Like Game</h1>
+      <button id="start-button">Start Game</button>
+    </div>
+    <div id="hud">
+      <div id="size-display">Size: <span id="sphere-size">1</span> cm</div>
+    </div>
+    <div id="mobile-controls">
+      <button id="up-button">↑</button>
+      <div id="middle-row">
+        <button id="left-button">←</button>
+        <button id="right-button">→</button>
+      </div>
+      <button id="down-button">↓</button>
+    </div>
+  </div>
+
+  <!-- Debug script -->
+  <script src="js/debug.js"></script>
+  
+  <!-- Game scripts -->
+  <script src="js/util/helpers.js"></script>
+  <script src="js/game/cameraController.js"></script>
+  <script src="js/game/physics.js"></script>
+  <script src="js/game/objectManager.js"></script>
+  <script src="js/game/inputHandler.js"></script>
+  <script src="js/game/gameController.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

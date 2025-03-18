@@ -1,0 +1,37 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# User Interface Guidelines
+scope: {index.html,css/**/*.css,js/**/*(ui|UI)*.js}
+
+## UI Design Principles
+- Use vibrant, childlike colors for all UI elements
+- Implement a clean, minimal HUD displaying essential information
+- Create playful, large button styles for menus
+- Follow a consistent color scheme with the 3D game elements
+
+## Main Menu
+- Implement a simple, clear start screen with minimal options
+- Include basic instructions for how to play the game
+- Add options for basic settings (audio on/off, controls info)
+- Design for both mouse/touch interaction
+
+## In-Game HUD
+- Display current sphere size prominently
+- Show size threshold progress for next milestone
+- Keep UI elements minimal to avoid cluttering the game view
+- Position elements at screen edges to maximize gameplay visibility
+
+## Mobile UI Adaptations
+- Design larger touch targets for mobile interfaces
+- Implement on-screen controls as fallback for device orientation
+- Ensure UI is responsive across different screen sizes
+- Apply proper touch event handling for all interactive elements
+
+## Styling and CSS
+- Use CSS variables for consistent theming
+- Implement proper responsive design with media queries
+- Create smooth transitions for UI element changes
+- Follow a cheerful, rainbow-inspired color scheme

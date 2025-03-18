@@ -1,0 +1,82 @@
+[
+  {
+    "id": "smallCube",
+    "geometryType": "box",
+    "sizeRange": [0.5, 2],
+    "colors": ["#FF0000", "#FFA500", "#FFFF00"],
+    "minPlayerSize": 0,
+    "maxPlayerSize": 10
+  },
+  {
+    "id": "smallSphere",
+    "geometryType": "sphere",
+    "sizeRange": [0.5, 2],
+    "colors": ["#008000", "#0000FF", "#4B0082"],
+    "minPlayerSize": 0,
+    "maxPlayerSize": 15
+  },
+  {
+    "id": "mediumCube",
+    "geometryType": "box",
+    "sizeRange": [2, 4],
+    "colors": ["#EE82EE", "#FF1493", "#FFC0CB"],
+    "minPlayerSize": 5,
+    "maxPlayerSize": 20
+  },
+  {
+    "id": "mediumSphere",
+    "geometryType": "sphere",
+    "sizeRange": [2, 4],
+    "colors": ["#FF0000", "#FFA500", "#FFFF00"],
+    "minPlayerSize": 5,
+    "maxPlayerSize": 20
+  },
+  {
+    "id": "cone",
+    "geometryType": "cone",
+    "sizeRange": [1, 3],
+    "colors": ["#008000", "#0000FF", "#4B0082"],
+    "minPlayerSize": 3,
+    "maxPlayerSize": 20
+  },
+  {
+    "id": "cylinder",
+    "geometryType": "cylinder",
+    "sizeRange": [1, 3],
+    "colors": ["#EE82EE", "#FF1493", "#FFC0CB"],
+    "minPlayerSize": 3,
+    "maxPlayerSize": 20
+  },
+  {
+    "id": "largeCube",
+    "geometryType": "box",
+    "sizeRange": [4, 8],
+    "colors": ["#FF0000", "#FFA500", "#FFFF00"],
+    "minPlayerSize": 10,
+    "maxPlayerSize": 30
+  },
+  {
+    "id": "largeSphere",
+    "geometryType": "sphere",
+    "sizeRange": [4, 8],
+    "colors": ["#008000", "#0000FF", "#4B0082"],
+    "minPlayerSize": 10,
+    "maxPlayerSize": 30
+  },
+  {
+    "id": "hugeCube",
+    "geometryType": "box",
+    "sizeRange": [8, 15],
+    "colors": ["#EE82EE", "#FF1493", "#FFC0CB"],
+    "minPlayerSize": 20,
+    "maxPlayerSize": 100
+  },
+  {
+    "id": "hugeSphere",
+    "geometryType": "sphere",
+    "sizeRange": [8, 15],
+    "colors": ["#FF0000", "#FFA500", "#FFFF00"],
+    "minPlayerSize": 20,
+    "maxPlayerSize": 100
+  }
+]

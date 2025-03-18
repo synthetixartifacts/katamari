@@ -1,0 +1,41 @@
+{
+  "phases": [
+    {
+      "minSize": 0,
+      "maxSize": 5,
+      "cameraDistance": 10,
+      "cameraHeight": 5,
+      "spawnableObjects": ["smallCube", "smallSphere"]
+    },
+    {
+      "minSize": 5,
+      "maxSize": 10,
+      "cameraDistance": 15,
+      "cameraHeight": 7,
+      "spawnableObjects": ["smallCube", "smallSphere", "mediumCube", "mediumSphere", "cone", "cylinder"]
+    },
+    {
+      "minSize": 10,
+      "maxSize": 20,
+      "cameraDistance": 25,
+      "cameraHeight": 12,
+      "spawnableObjects": ["mediumCube", "mediumSphere", "cone", "cylinder", "largeCube", "largeSphere"]
+    },
+    {
+      "minSize": 20,
+      "maxSize": 40,
+      "cameraDistance": 40,
+      "cameraHeight": 20,
+      "spawnableObjects": ["largeCube", "largeSphere", "hugeCube", "hugeSphere"]
+    },
+    {
+      "minSize": 40,
+      "maxSize": 100,
+      "cameraDistance": 60,
+      "cameraHeight": 30,
+      "spawnableObjects": ["hugeCube", "hugeSphere"]
+    }
+  ],
+  "winSize": 50,
+  "maxSpawnedObjects": 50
+}
