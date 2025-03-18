@@ -27,9 +27,6 @@
     </div>
   </div>
 
-  <!-- Debug script -->
-  <script src="js/debug.js"></script>
-  
   <!-- Game scripts -->
   <script src="js/util/helpers.js"></script>
   <script src="js/game/cameraController.js"></script>
@@ -38,5 +35,14 @@
   <script src="js/game/inputHandler.js"></script>
   <script src="js/game/gameController.js"></script>
   <script src="js/main.js"></script>
+  
+  <!-- Debug script - only load if debug=1 is in URL -->
+  <script>
+    if (isDebugMode()) {
+      const debugScript = document.createElement('script');
+      debugScript.src = 'js/debug.js';
+      document.body.appendChild(debugScript);
+    }
+  </script>
 </body>
 </html>

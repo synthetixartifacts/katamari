@@ -68,3 +68,12 @@ function getRandomRainbowColor() {
   
   return colors[Math.floor(Math.random() * colors.length)];
 }
+
+/**
+ * Check if debug mode is enabled via URL parameter
+ * @returns {boolean} True if debug mode is enabled, false otherwise
+ */
+function isDebugMode() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('debug') === '1';
+}
