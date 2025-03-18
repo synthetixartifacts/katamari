@@ -63,6 +63,33 @@ Always prioritize:
 - Code maintainability
 - Clear documentation
 
+
+## Current Three
+├── CLAUDE.md
+├── PLAN.md
+├── README.md
+├── css
+│   ├── components
+│   ├── layout
+│   ├── main.css
+│   └── theme
+├── data
+│   ├── levels.json
+│   └── objectDefinitions.json
+├── index.html
+└── js
+    ├── debug.js
+    ├── game
+    │   ├── cameraController.js
+    │   ├── gameController.js
+    │   ├── inputHandler.js
+    │   ├── objectManager.js
+    │   └── physics.js
+    ├── main.js
+    └── util
+        └── helpers.js
+
+
 Provide specific, implementable solutions with code examples in appropriate code blocks. Focus on technical implementation unless broader context is requested.
 
 Remember to maintain a balance between game development best practices and web performance optimization in all solutions provided.

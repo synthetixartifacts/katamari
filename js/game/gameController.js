@@ -2,15 +2,24 @@
 
 class GameController {
   constructor() {
+    // Game state variables
+    this.isRunning = false;
+    this.isPaused = false;
+    this.score = 0;
+    this.level = 1;
+    this.sphereSize = 1.0;
+
+    // Physics options
+    this.physicsEngine = 'basic'; // Options: 'basic', 'advanced'
+    // TODO: Add CannonJS integration for advanced physics when physicsEngine is set to 'advanced'
+
     // Initialize game properties
     this.scene = null;
     this.renderer = null;
-    this.clock = null;
-    this.isRunning = false;
+    this.clock = new THREE.Clock();
 
     // Player sphere properties
     this.playerSphere = null;
-    this.sphereSize = 1; // Starting size in cm
 
     // Game modules
     this.objectManager = null;
@@ -24,11 +33,18 @@ class GameController {
 
     // Setup scene
     this._setupScene();
+
+    // Initialize game systems
+    this.physics = new Physics();
+    this.objectManager = new ObjectManager(this.scene);
+
+    // Start systems
+    window.addEventListener('resize', this._handleResize.bind(this));
   }
 
   _setupScene() {
     console.log('Setting up scene...');
-    
+
     // Create Three.js scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87CEEB); // Sky blue background
@@ -37,11 +53,11 @@ class GameController {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
-    
+
     // Append canvas to game container instead of body
     const gameContainer = document.getElementById('game-container');
     gameContainer.appendChild(this.renderer.domElement);
-    
+
     // Position the canvas
     this.renderer.domElement.style.position = 'absolute';
     this.renderer.domElement.style.top = '0';
@@ -67,10 +83,10 @@ class GameController {
 
     // Add resize handler
     window.addEventListener('resize', () => this._handleResize());
-    
+
     // Do an initial render
     this.renderer.render(this.scene, this.cameraController.camera);
-    
+
     console.log('Scene setup complete');
   }
 
@@ -84,20 +100,24 @@ class GameController {
     dirLight.position.set(10, 20, 10);
     dirLight.castShadow = true;
 
-    // Set up shadow properties
+    // Set up shadow properties - adjust shadow camera based on map size
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.camera.left = -50;
-    dirLight.shadow.camera.right = 50;
-    dirLight.shadow.camera.top = 50;
-    dirLight.shadow.camera.bottom = -50;
+    
+    // Calculate shadow camera boundaries based on map size
+    const shadowSize = Math.min(window.GAME_CONFIG.MAP_SIZE / 5, 100); // Limit maximum shadow area
+    dirLight.shadow.camera.left = -shadowSize;
+    dirLight.shadow.camera.right = shadowSize;
+    dirLight.shadow.camera.top = shadowSize;
+    dirLight.shadow.camera.bottom = -shadowSize;
 
     this.scene.add(dirLight);
   }
 
   _createGround() {
-    // Create ground plane
-    const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
+    // Create ground plane using the configurable map size
+    const mapSize = window.GAME_CONFIG.MAP_SIZE;
+    const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x7CFC00,  // Light green
       roughness: 0.8,
@@ -114,7 +134,7 @@ class GameController {
 
   _createPlayerSphere() {
     console.log('Creating player sphere...');
-    
+
     // Create the player's sticky sphere
     const sphereGeometry = new THREE.SphereGeometry(this.sphereSize, 32, 32);
     const sphereMaterial = new THREE.MeshStandardMaterial({
@@ -143,11 +163,16 @@ class GameController {
     this.renderer.setSize(width, height);
     this.cameraController.camera.aspect = width / height;
     this.cameraController.camera.updateProjectionMatrix();
+
+    // Force a re-render after resize to prevent black screen
+    if (this.scene && this.cameraController && this.cameraController.camera) {
+      this.renderer.render(this.scene, this.cameraController.camera);
+    }
   }
 
   start() {
     console.log('Game starting...');
-    
+
     // Create player sphere
     this._createPlayerSphere();
 
@@ -166,7 +191,7 @@ class GameController {
       this.mobileControls.style.display = 'block';
       this.inputHandler.setupMobileControls();
     }
-    
+
     console.log('Game started successfully');
   }
 
@@ -185,6 +210,44 @@ class GameController {
       this.objectManager.objects,
       this.sphereSize
     );
+
+    // Apply physics (after collision checks which might affect velocity)
+    this.physics.applyPhysics(this.playerSphere, delta);
+    
+    // NEW: Update physics for any objects with velocity
+    this.objectManager.objects.forEach(object => {
+      if (object.userData.velocity) {
+        // Apply the velocity to the object's position
+        object.position.x += object.userData.velocity.x * delta;
+        object.position.z += object.userData.velocity.z * delta;
+        
+        // Add rotation effect based on velocity and object type
+        const speed = Math.sqrt(
+          object.userData.velocity.x * object.userData.velocity.x + 
+          object.userData.velocity.z * object.userData.velocity.z
+        );
+        
+        if (speed > 0.01) {
+          // Different rotation based on object type
+          if (object.userData.type === 'sphere') {
+            // Roll spheres in the direction of movement
+            const rotationAxis = new THREE.Vector3(-object.userData.velocity.z, 0, object.userData.velocity.x).normalize();
+            object.rotateOnAxis(rotationAxis, speed * delta);
+          } else {
+            // Simple rotation for non-spherical objects
+            object.rotation.y += speed * delta * 0.5;
+          }
+        }
+        
+        // Apply friction
+        object.userData.velocity.multiplyScalar(0.95);
+        
+        // If velocity becomes very small, set it to zero
+        if (object.userData.velocity.lengthSq() < 0.001) {
+          object.userData.velocity.set(0, 0, 0);
+        }
+      }
+    });
 
     // Handle collisions
     if (collisions.length > 0) {
@@ -207,22 +270,22 @@ class GameController {
       try {
         // Calculate size increase based on absorbed object volume
         let objectVolume;
-        
+
         // Different calculation based on object geometry type
         if (object.geometry instanceof THREE.SphereGeometry) {
           // For spheres, use the standard sphere volume formula
           const radius = object.userData.size;
           objectVolume = Math.pow(radius, 3) * Math.PI * (4/3);
-          
+
           if (window.debugLog) {
             window.debugLog(`Absorbing sphere of size ${radius.toFixed(2)}, volume: ${objectVolume.toFixed(2)}`);
           }
-        } 
+        }
         else if (object.geometry instanceof THREE.BoxGeometry) {
           // For boxes, use the cube volume formula
           const size = object.userData.size;
           objectVolume = Math.pow(size, 3);
-          
+
           if (window.debugLog) {
             window.debugLog(`Absorbing box of size ${size.toFixed(2)}, volume: ${objectVolume.toFixed(2)}`);
           }
@@ -232,7 +295,7 @@ class GameController {
           const radius = object.userData.size;
           const height = object.userData.size * 2;
           objectVolume = (1/3) * Math.PI * Math.pow(radius, 2) * height;
-          
+
           if (window.debugLog) {
             window.debugLog(`Absorbing cone of radius ${radius.toFixed(2)}, height ${height.toFixed(2)}, volume: ${objectVolume.toFixed(2)}`);
           }
@@ -242,7 +305,7 @@ class GameController {
           const radius = object.userData.size;
           const height = object.userData.size * 2;
           objectVolume = Math.PI * Math.pow(radius, 2) * height;
-          
+
           if (window.debugLog) {
             window.debugLog(`Absorbing cylinder of radius ${radius.toFixed(2)}, height ${height.toFixed(2)}, volume: ${objectVolume.toFixed(2)}`);
           }
@@ -250,12 +313,12 @@ class GameController {
         else {
           // Fallback: use a simple approximation based on user data
           objectVolume = Math.pow(object.userData.size, 3) * 0.5;
-          
+
           if (window.debugLog) {
             window.debugLog(`Absorbing unknown shape of size ${object.userData.size.toFixed(2)}, estimated volume: ${objectVolume.toFixed(2)}`);
           }
         }
-        
+
         // Safety check for valid volume
         if (isNaN(objectVolume) || objectVolume <= 0) {
           if (window.debugLog) {
@@ -272,7 +335,7 @@ class GameController {
 
         // New radius from new volume
         const newSize = Math.pow((3 * newVolume) / (4 * Math.PI), 1/3);
-        
+
         // Safety check for valid size
         if (isNaN(newSize) || newSize <= 0) {
           if (window.debugLog) {
@@ -284,7 +347,7 @@ class GameController {
         if (window.debugLog) {
           window.debugLog(`Sphere growing from ${this.sphereSize.toFixed(2)} to ${newSize.toFixed(2)}`);
         }
-        
+
         // Update sphere size
         this.growSphere(newSize);
 
@@ -301,7 +364,7 @@ class GameController {
     // Update HUD
     this._updateHUD();
 
-    // Possibly spawn new objects based on new size
+    // Possibly spawn new objects based on new size (if respawning is enabled)
     this.objectManager.checkAndSpawnObjects(this.sphereSize);
   }
 
@@ -311,7 +374,7 @@ class GameController {
       console.error("Invalid sphere size:", newSize);
       return;
     }
-    
+
     // Update the sphere size
     this.sphereSize = newSize;
 
@@ -346,10 +409,10 @@ class GameController {
       if (this.inputHandler) {
         this.inputHandler.updatePlayerSphere(this.playerSphere);
       }
-      
+
       // Update camera distance based on new size
       this.cameraController.updateCameraForSize(this.sphereSize);
-      
+
     } catch (error) {
       if (window.debugLog) {
         window.debugLog(`Error growing sphere: ${error.message}`, 'error');
@@ -366,7 +429,7 @@ class GameController {
       }
       this.sphereSize = 1;
     }
-    
+
     // Update the sphere size display (rounded to 2 decimal places)
     this.sphereSizeElement.textContent = this.sphereSize.toFixed(2);
   }

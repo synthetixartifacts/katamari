@@ -7,7 +7,7 @@ class CameraController {
       75, // FOV
       window.innerWidth / window.innerHeight, // Aspect ratio
       0.1, // Near clipping plane
-      1000 // Far clipping plane
+      window.GAME_CONFIG.MAP_SIZE * 2 // Far clipping plane based on map size
     );
 
     // Camera fixed position parameters
@@ -15,12 +15,13 @@ class CameraController {
     this.height = 10;
     this.rotationAngle = 0; // Camera rotation angle in radians
     
-    // Size thresholds for camera adjustments
+    // Size thresholds for camera adjustments - scaled based on map size
+    const mapScale = Math.max(1, window.GAME_CONFIG.MAP_SIZE / 1000);
     this.sizeThresholds = [
-      { size: 5, distance: 25, height: 12 },
-      { size: 10, distance: 35, height: 15 },
-      { size: 20, distance: 50, height: 25 },
-      { size: 40, distance: 70, height: 40 }
+      { size: 5, distance: 25 * mapScale, height: 12 * mapScale },
+      { size: 10, distance: 35 * mapScale, height: 15 * mapScale },
+      { size: 20, distance: 50 * mapScale, height: 25 * mapScale },
+      { size: 40, distance: 70 * mapScale, height: 40 * mapScale }
     ];
     
     // Initial camera setup
@@ -50,6 +51,14 @@ class CameraController {
     // Calculate camera target position (player position)
     this.camera.lookAt(playerPos);
     
+    // Get the current sphere geometry to check its size
+    if (playerSphere.geometry && playerSphere.geometry.parameters) {
+      const currentSphereSize = playerSphere.geometry.parameters.radius;
+      
+      // Check if we need to update camera based on the current sphere size
+      this.updateCameraForSize(currentSphereSize);
+    }
+    
     // Update camera position around player based on rotation angle
     this.updateCameraPosition(playerPos);
   }
@@ -74,31 +83,41 @@ class CameraController {
       sphereSize = 1; // Default to a reasonable value
     }
     
-    // Find appropriate camera settings based on sphere size
-    let settings = {
-      distance: 20,
-      height: 10
-    };
-
-    // Check thresholds
-    if (this.sizeThresholds && this.sizeThresholds.length > 0) {
-      // Check thresholds in reverse order (largest first)
-      for (let i = this.sizeThresholds.length - 1; i >= 0; i--) {
-        const threshold = this.sizeThresholds[i];
-        if (sphereSize >= threshold.size) {
-          settings = threshold;
-          break;
-        }
-      }
+    // Get the max screen percentage from config
+    const maxScreenPercentage = window.GAME_CONFIG.MAX_SCREEN_PERCENTAGE || 30;
+    const zoomRate = window.GAME_CONFIG.CAMERA_ZOOM_RATE || 1.5;
+    
+    // Calculate the camera distance needed based on the sphere size
+    // to keep the sphere at the desired screen percentage
+    
+    // First get the viewport height at the current camera position
+    // Using the formula: 2 * Math.tan(FOV_RADIANS / 2) * distance
+    const fovRadians = this.camera.fov * Math.PI / 180;
+    
+    // Calculate the base distance needed to maintain the desired screen percentage
+    // Formula: sphere size / (max screen percentage / 100) / (2 * tan(fov/2))
+    const baseDistance = sphereSize / (maxScreenPercentage / 100) / Math.tan(fovRadians / 2);
+    
+    // Calculate current sphere screen percentage for debugging
+    const screenHeight = 2 * Math.tan(fovRadians / 2) * this.distance;
+    const currentScreenPercentage = (sphereSize / screenHeight) * 100;
+    
+    if (window.debugLog && currentScreenPercentage > maxScreenPercentage) {
+      window.debugLog(`Sphere screen percentage: ${currentScreenPercentage.toFixed(2)}%, Target: ${maxScreenPercentage}%`, 'info');
     }
-
-    // Update camera parameters
-    this.distance = settings.distance;
-    this.height = settings.height;
+    
+    // Apply zoom rate multiplier and scale with playable area
+    const playableAreaScale = Math.max(1, window.GAME_CONFIG.PLAYABLE_AREA / 400);
+    this.distance = baseDistance * zoomRate * playableAreaScale;
+    
+    // Scale height proportionally to distance
+    // We'll use a height-to-distance ratio based on the existing thresholds
+    const heightRatio = 0.5; // A good default height is about half the distance
+    this.height = this.distance * heightRatio;
     
     // Update FOV based on sphere size
     const baseFOV = 75;
-    const targetFOV = baseFOV - 5 + (sphereSize * 0.5); 
+    const targetFOV = baseFOV - 5 + (sphereSize * 0.2); 
     
     // Clamp FOV between 60 and 100
     this.camera.fov = Math.max(60, Math.min(100, targetFOV));

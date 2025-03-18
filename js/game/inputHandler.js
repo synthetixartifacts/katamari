@@ -5,7 +5,7 @@ class InputHandler {
     this.playerSphere = playerSphere;
     this.cameraController = cameraController;
     this.keys = {};
-    this.moveSpeed = 30; // Fast movement speed
+    this.moveSpeed = window.GAME_CONFIG.BALL_SPEED; // Use global config
     this.rotationSpeed = 1.5; // Camera rotation speed (radians per second)
     
     // Mobile touch controls
@@ -123,7 +123,11 @@ class InputHandler {
     // Get current velocity
     const velocity = this.playerSphere.userData.velocity;
     
-    // Reset velocity (better control)
+    // Store any existing sideways momentum from collisions
+    const existingVelocityX = velocity.x;
+    const existingVelocityZ = velocity.z;
+    
+    // Reset velocity for movement control
     velocity.x = 0;
     velocity.z = 0;
     
@@ -162,6 +166,12 @@ class InputHandler {
       // Move backward from the direction the camera is facing
       velocity.x -= forward.x * this.moveSpeed * delta;
       velocity.z -= forward.z * this.moveSpeed * delta;
+    }
+    
+    // Restore any collision momentum (damped to avoid excessive velocity)
+    if (Math.abs(existingVelocityX) > 0.01 || Math.abs(existingVelocityZ) > 0.01) {
+      velocity.x += existingVelocityX * 0.8; // Damping factor of 0.8
+      velocity.z += existingVelocityZ * 0.8;
     }
     
     // Apply physics (gravity, etc.)

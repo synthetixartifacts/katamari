@@ -4,8 +4,7 @@ class ObjectManager {
   constructor(scene) {
     this.scene = scene;
     this.objects = [];
-    this.maxObjects = 50; // Cap total number of objects for performance
-    
+
     // Rainbow colors palette
     this.colors = [
       0xFF0000, // Red
@@ -16,138 +15,113 @@ class ObjectManager {
       0x4B0082, // Indigo
       0xEE82EE  // Violet
     ];
-    
+
     // Object definitions
     this.objectDefinitions = [
       {
         id: 'smallCube',
         geometryType: 'box',
-        sizeRange: [0.5, 2],
-        minPlayerSize: 0,
-        maxPlayerSize: 10
+        sizeRange: [0.5, 10]
       },
       {
         id: 'smallSphere',
         geometryType: 'sphere',
-        sizeRange: [0.5, 2],
-        minPlayerSize: 0,
-        maxPlayerSize: 15
+        sizeRange: [0.5, 15]
       },
       {
         id: 'mediumCube',
         geometryType: 'box',
-        sizeRange: [2, 4],
-        minPlayerSize: 5,
-        maxPlayerSize: 20
+        sizeRange: [5, 25]
       },
       {
         id: 'mediumSphere',
         geometryType: 'sphere',
-        sizeRange: [2, 4],
-        minPlayerSize: 5,
-        maxPlayerSize: 20
+        sizeRange: [5, 30]
       },
       {
         id: 'cone',
         geometryType: 'cone',
-        sizeRange: [1, 3],
-        minPlayerSize: 3,
-        maxPlayerSize: 20
+        sizeRange: [3, 20]
       },
       {
         id: 'cylinder',
         geometryType: 'cylinder',
-        sizeRange: [1, 3],
-        minPlayerSize: 3,
-        maxPlayerSize: 20
+        sizeRange: [3, 25]
       },
       {
         id: 'largeCube',
         geometryType: 'box',
-        sizeRange: [4, 8],
-        minPlayerSize: 10,
-        maxPlayerSize: 30
+        sizeRange: [10, 50]
       },
       {
         id: 'largeSphere',
         geometryType: 'sphere',
-        sizeRange: [4, 8],
-        minPlayerSize: 10,
-        maxPlayerSize: 30
+        sizeRange: [10, 60]
       },
       {
         id: 'hugeCube',
         geometryType: 'box',
-        sizeRange: [8, 15],
-        minPlayerSize: 20,
-        maxPlayerSize: Infinity
+        sizeRange: [30, window.GAME_CONFIG.MAX_OBJECT_SIZE / 2]
       },
       {
         id: 'hugeSphere',
         geometryType: 'sphere',
-        sizeRange: [8, 15],
-        minPlayerSize: 20,
-        maxPlayerSize: Infinity
+        sizeRange: [30, window.GAME_CONFIG.MAX_OBJECT_SIZE]
       }
     ];
   }
-  
+
   spawnInitialObjects(playerSize) {
     // Spawn initial set of objects
-    const count = 30; // Start with 30 objects
-    
+    const count = window.GAME_CONFIG.INITIAL_OBJECTS_COUNT; // Use global config
+
     for (let i = 0; i < count; i++) {
       this.spawnRandomObject(playerSize);
     }
   }
-  
+
   spawnRandomObject(playerSize) {
     // Ensure we're not over the object limit
-    if (this.objects.length >= this.maxObjects) {
+    if (this.objects.length >= window.GAME_CONFIG.MAX_OBJECTS_COUNT) {
       return null;
     }
+
+    // Select a random object definition regardless of player size
+    const objectDef = this.objectDefinitions[Math.floor(Math.random() * this.objectDefinitions.length)];
+
+    // Choose random size within range - capped by MAX_OBJECT_SIZE
+    const minSize = objectDef.sizeRange[0];
+    const maxSize = Math.min(objectDef.sizeRange[1], window.GAME_CONFIG.MAX_OBJECT_SIZE);
+    const size = randomInRange(minSize, maxSize);
+
+    // Choose random position within the playable area
+    const playableArea = window.GAME_CONFIG.PLAYABLE_AREA;
     
-    // Filter object definitions based on player's current size
-    const availableObjects = this.objectDefinitions.filter(def => 
-      playerSize >= def.minPlayerSize && playerSize <= def.maxPlayerSize
-    );
+    // Ensure objects are spawned within the map boundaries
+    const maxCoord = Math.min(playableArea, window.GAME_CONFIG.MAP_SIZE / 2 - size);
     
-    // If no objects match this size range, return
-    if (availableObjects.length === 0) {
-      return null;
-    }
-    
-    // Select a random object definition
-    const objectDef = availableObjects[Math.floor(Math.random() * availableObjects.length)];
-    
-    // Choose random size within range
-    const size = randomInRange(objectDef.sizeRange[0], objectDef.sizeRange[1]);
-    
-    // Choose random position within reasonable bounds
-    // (Adjusted based on player size to ensure objects aren't too far away)
-    const spawnRadius = 50 + playerSize * 2;
     const position = {
-      x: randomInRange(-spawnRadius, spawnRadius),
+      x: randomInRange(-maxCoord, maxCoord),
       y: size / 2, // Half the height to place on ground
-      z: randomInRange(-spawnRadius, spawnRadius)
+      z: randomInRange(-maxCoord, maxCoord)
     };
-    
+
     // Choose random color from palette
     const color = this.colors[Math.floor(Math.random() * this.colors.length)];
-    
+
     // Create the object
     const object = this._createObject(objectDef.geometryType, size, position, color);
-    
+
     // Add to scene and tracking array
     this.scene.add(object);
     this.objects.push(object);
-    
+
     return object;
   }
-  
+
   _createObject(type, size, position, color) {
     let geometry, mesh;
-    
+
     switch (type) {
       case 'box':
         geometry = new THREE.BoxGeometry(size, size, size);
@@ -164,74 +138,84 @@ class ObjectManager {
       default:
         geometry = new THREE.SphereGeometry(size, 16, 16);
     }
-    
+
     const material = new THREE.MeshStandardMaterial({
       color: color,
       roughness: 0.7,
       metalness: 0.2
     });
-    
+
     mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(position.x, position.y, position.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    
+
     // Add metadata to the mesh for collision detection
     mesh.userData = {
       type: type,
       size: size,
       canBeAbsorbed: true
     };
-    
+
     return mesh;
   }
-  
+
   removeObject(object) {
     // Remove from scene
     this.scene.remove(object);
-    
+
     // Remove from tracking array
     const index = this.objects.indexOf(object);
     if (index !== -1) {
       this.objects.splice(index, 1);
     }
   }
-  
+
   checkAndSpawnObjects(playerSize) {
-    // Determine how many objects we want based on player size
-    const desiredObjectCount = Math.min(30 + Math.floor(playerSize * 2), this.maxObjects);
+    // Only respawn objects if the configuration allows it
+    if (!window.GAME_CONFIG.RESPAWN_OBJECTS) {
+      return;
+    }
     
+    // Determine how many objects we want - independent of player size
+    const desiredObjectCount = Math.min(window.GAME_CONFIG.MAX_OBJECTS_COUNT, window.GAME_CONFIG.INITIAL_OBJECTS_COUNT);
+
     // Spawn additional objects if needed
     const objectsToSpawn = desiredObjectCount - this.objects.length;
-    
+
     for (let i = 0; i < objectsToSpawn; i++) {
       this.spawnRandomObject(playerSize);
     }
-    
+
     // Cull objects that are too small to be relevant anymore
     this._cullTinyObjects(playerSize);
   }
-  
+
   _cullTinyObjects(playerSize) {
-    // Remove objects that are now too small to be interesting
-    // (e.g., if they're less than 10% of player's size and far away)
+    // Only remove small objects that are far away
     const minRelevantSize = playerSize * 0.1;
-    
+
     // Use an array to collect objects to remove
     const objectsToRemove = [];
     
+    // Calculate distance threshold based on playable area
+    const playableArea = window.GAME_CONFIG.PLAYABLE_AREA;
+    const cullDistanceThreshold = playableArea * playableArea; // Square it for distanceSq comparison
+
     this.objects.forEach(object => {
-      if (object.userData.size < minRelevantSize) {
+      // Only cull if object is small relative to player size
+      // Leave large objects alone even if they're far away
+      if (object.userData.size < minRelevantSize && object.userData.size < 5) {
         // Calculate distance to player (simplified as playerSphere might be at 0,0,0)
         const distanceSq = object.position.lengthSq();
-        
+
         // If small and far away, mark for removal
-        if (distanceSq > 2500) { // 50 units squared
+        if (distanceSq > cullDistanceThreshold) {
           objectsToRemove.push(object);
         }
       }
     });
-    
+
     // Remove all collected objects
     objectsToRemove.forEach(object => this.removeObject(object));
   }
