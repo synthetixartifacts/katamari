@@ -4,12 +4,12 @@
 window.GAME_CONFIG = {
   INITIAL_BALL_SIZE: 1, // Starting size in cm
   BALL_SPEED: 10, // Movement speed
-  INITIAL_OBJECTS_COUNT: 3000, // Number of objects initially spawned
-  MAX_OBJECTS_COUNT: 3000, // Maximum number of objects at any time
+  INITIAL_OBJECTS_COUNT: 1000, // Number of objects initially spawned
+  MAX_OBJECTS_COUNT: 1000, // Maximum number of objects at any time
   MAP_SIZE: 1000, // Size of the entire map (ground plane)
   PLAYABLE_AREA: 400, // Size of the area where objects can spawn
   MAX_OBJECT_SIZE: 1, // Maximum size of spawnable objects in cm
-  RESPAWN_OBJECTS: false, // Whether to respawn objects after they are absorbed
+  RESPAWN_OBJECTS: true, // Whether to respawn objects after they are absorbed
   MAX_SCREEN_PERCENTAGE: 30, // Maximum percentage of screen height the sphere should occupy (0-100)
   CAMERA_ZOOM_RATE: 1.5 // Multiplier for camera distance relative to sphere size
 };
