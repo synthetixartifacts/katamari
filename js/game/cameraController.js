@@ -42,7 +42,7 @@ class CameraController {
   }
 
   // Update camera position based on player position and current rotation angle
-  update(playerSphere) {
+  update(playerSphere, delta = 0) {
     if (!playerSphere) return;
     
     // Get player's current position

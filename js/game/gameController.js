@@ -26,9 +26,9 @@ class GameController {
     this.physics = null;
     this.cameraController = null;
     this.inputHandler = null;
+    this.hudController = null;
 
     // DOM elements
-    this.sphereSizeElement = document.getElementById('sphere-size');
     this.mobileControls = document.getElementById('mobile-controls');
 
     // Setup scene
@@ -52,7 +52,7 @@ class GameController {
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.shadowMap.enabled = true;
+    // Shadow map disabled
 
     // Append canvas to game container instead of body
     const gameContainer = document.getElementById('game-container');
@@ -98,18 +98,7 @@ class GameController {
     // Add directional light
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
     dirLight.position.set(10, 20, 10);
-    dirLight.castShadow = true;
-
-    // Set up shadow properties - adjust shadow camera based on map size
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    
-    // Calculate shadow camera boundaries based on map size
-    const shadowSize = Math.min(window.GAME_CONFIG.MAP_SIZE / 5, 100); // Limit maximum shadow area
-    dirLight.shadow.camera.left = -shadowSize;
-    dirLight.shadow.camera.right = shadowSize;
-    dirLight.shadow.camera.top = shadowSize;
-    dirLight.shadow.camera.bottom = -shadowSize;
+    // Removed shadow casting
 
     this.scene.add(dirLight);
   }
@@ -127,7 +116,7 @@ class GameController {
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
     ground.position.y = -0.5;
-    ground.receiveShadow = true;
+    // Removed receiveShadow
 
     this.scene.add(ground);
   }
@@ -144,9 +133,8 @@ class GameController {
     });
 
     this.playerSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    this.playerSphere.position.set(0, this.sphereSize, 0); // Position above ground
-    this.playerSphere.castShadow = true;
-    this.playerSphere.receiveShadow = true;
+    this.playerSphere.position.set(0, this.sphereSize + 0.5, 0); // Position above ground
+    // Removed castShadow and receiveShadow from player sphere
 
     // Store the sphere's current velocity
     this.playerSphere.userData.velocity = new THREE.Vector3();
@@ -178,6 +166,10 @@ class GameController {
 
     // Initialize input handler with camera controller
     this.inputHandler = new InputHandler(this.playerSphere, this.cameraController);
+    
+    // Initialize HUD controller
+    this.hudController = new HUDController(this);
+    this.hudController.show();
 
     // Spawn initial objects
     this.objectManager.spawnInitialObjects(this.sphereSize);
@@ -213,49 +205,22 @@ class GameController {
 
     // Apply physics (after collision checks which might affect velocity)
     this.physics.applyPhysics(this.playerSphere, delta);
-    
-    // NEW: Update physics for any objects with velocity
-    this.objectManager.objects.forEach(object => {
-      if (object.userData.velocity) {
-        // Apply the velocity to the object's position
-        object.position.x += object.userData.velocity.x * delta;
-        object.position.z += object.userData.velocity.z * delta;
-        
-        // Add rotation effect based on velocity and object type
-        const speed = Math.sqrt(
-          object.userData.velocity.x * object.userData.velocity.x + 
-          object.userData.velocity.z * object.userData.velocity.z
-        );
-        
-        if (speed > 0.01) {
-          // Different rotation based on object type
-          if (object.userData.type === 'sphere') {
-            // Roll spheres in the direction of movement
-            const rotationAxis = new THREE.Vector3(-object.userData.velocity.z, 0, object.userData.velocity.x).normalize();
-            object.rotateOnAxis(rotationAxis, speed * delta);
-          } else {
-            // Simple rotation for non-spherical objects
-            object.rotation.y += speed * delta * 0.5;
-          }
-        }
-        
-        // Apply friction
-        object.userData.velocity.multiplyScalar(0.95);
-        
-        // If velocity becomes very small, set it to zero
-        if (object.userData.velocity.lengthSq() < 0.001) {
-          object.userData.velocity.set(0, 0, 0);
-        }
-      }
-    });
 
     // Handle collisions
     if (collisions.length > 0) {
       this._handleCollisions(collisions);
     }
 
-    // Update camera position to follow player
-    this.cameraController.update(this.playerSphere);
+    // Update camera position
+    this.cameraController.update(this.playerSphere, delta);
+    
+    // Update minimap with player position
+    if (this.hudController) {
+      this.hudController.updateMinimap(
+        this.playerSphere.position,
+        window.GAME_CONFIG.MAP_SIZE
+      );
+    }
 
     // Render scene
     this.renderer.render(this.scene, this.cameraController.camera);
@@ -353,6 +318,11 @@ class GameController {
 
         // Remove the absorbed object
         this.objectManager.removeObject(object);
+        
+        // Increment absorbed items counter in HUD
+        if (this.hudController) {
+          this.hudController.incrementItemsAbsorbed();
+        }
       } catch (error) {
         if (window.debugLog) {
           window.debugLog(`Error processing collision: ${error.message}`, 'error');
@@ -400,9 +370,6 @@ class GameController {
         this.playerSphere.position.y = this.sphereSize;
       }
 
-      this.playerSphere.castShadow = true;
-      this.playerSphere.receiveShadow = true;
-
       this.scene.add(this.playerSphere);
 
       // Update input handler with new sphere reference
@@ -422,15 +389,9 @@ class GameController {
   }
 
   _updateHUD() {
-    // Safety check for valid sphere size
-    if (isNaN(this.sphereSize) || this.sphereSize <= 0) {
-      if (window.debugLog) {
-        window.debugLog(`Invalid sphere size in HUD: ${this.sphereSize}, resetting to 1`, 'error');
-      }
-      this.sphereSize = 1;
+    // Update HUD with current sphere size
+    if (this.hudController) {
+      this.hudController.updateSphereSize(this.sphereSize);
     }
-
-    // Update the sphere size display (rounded to 2 decimal places)
-    this.sphereSizeElement.textContent = this.sphereSize.toFixed(2);
   }
 }

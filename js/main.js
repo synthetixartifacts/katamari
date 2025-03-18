@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get UI elements
     const startButton = document.getElementById('start-button');
     const menu = document.getElementById('menu');
-    const hud = document.getElementById('hud');
 
     // Setup event listeners
     startButton.addEventListener('click', () => {
@@ -42,9 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       try {
-        // Hide menu, show HUD
+        // Hide menu (HUD will be shown by the HUDController)
         menu.style.display = 'none';
-        hud.style.display = 'block';
 
         // Start the game
         game.start();

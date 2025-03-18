@@ -74,27 +74,27 @@ class ObjectManager {
   spawnInitialObjects(playerSize) {
     // Spawn initial set of objects
     const count = window.GAME_CONFIG.INITIAL_OBJECTS_COUNT; // Use global config
-    
+
     // Add retry mechanism to prevent infinite loops in crowded scenes
     const maxSpawnAttempts = count * 2; // Allow up to 2x attempts
     let successfulSpawns = 0;
     let totalAttempts = 0;
 
     console.log(`Attempting to spawn ${count} initial objects...`);
-    
+
     while (successfulSpawns < count && totalAttempts < maxSpawnAttempts) {
       const newObject = this.spawnRandomObject(playerSize);
       totalAttempts++;
-      
+
       if (newObject) {
         successfulSpawns++;
-        
+
         // Log progress every 100 objects
         if (successfulSpawns % 100 === 0) {
           console.log(`Spawned ${successfulSpawns}/${count} objects...`);
         }
       }
-      
+
       // If we're having trouble spawning objects after many attempts,
       // bail out early to prevent long loading times
       if (totalAttempts >= 100 && successfulSpawns < totalAttempts * 0.1) {
@@ -102,7 +102,7 @@ class ObjectManager {
         break;
       }
     }
-    
+
     console.log(`Successfully spawned ${successfulSpawns}/${count} initial objects after ${totalAttempts} attempts`);
   }
 
@@ -113,23 +113,23 @@ class ObjectManager {
     }
 
     // Group objects by size category
-    const smallObjects = this.objectDefinitions.filter(obj => 
+    const smallObjects = this.objectDefinitions.filter(obj =>
       obj.sizeRange[1] <= 15 && obj.id.includes('small')
     );
-    
-    const mediumObjects = this.objectDefinitions.filter(obj => 
-      (obj.sizeRange[1] > 15 && obj.sizeRange[1] <= 30) || 
+
+    const mediumObjects = this.objectDefinitions.filter(obj =>
+      (obj.sizeRange[1] > 15 && obj.sizeRange[1] <= 30) ||
       (obj.id.includes('medium') || obj.id === 'cone' || obj.id === 'cylinder')
     );
-    
-    const largeObjects = this.objectDefinitions.filter(obj => 
+
+    const largeObjects = this.objectDefinitions.filter(obj =>
       obj.sizeRange[1] > 30 || obj.id.includes('large') || obj.id.includes('huge')
     );
 
     // Set probability weights (60% small, 30% medium, 10% large)
     let objectDef;
     const randomValue = Math.random();
-    
+
     if (randomValue < 0.6) {
       // Pick a small object
       objectDef = smallObjects[Math.floor(Math.random() * smallObjects.length)];
@@ -140,7 +140,7 @@ class ObjectManager {
       // Pick a large object
       objectDef = largeObjects[Math.floor(Math.random() * largeObjects.length)];
     }
-    
+
     // Fallback if the selected category is empty
     if (!objectDef) {
       objectDef = this.objectDefinitions[Math.floor(Math.random() * this.objectDefinitions.length)];
@@ -150,7 +150,7 @@ class ObjectManager {
     // For small objects, bias toward the lower end of the range
     const minSize = objectDef.sizeRange[0];
     const maxSize = Math.min(objectDef.sizeRange[1], window.GAME_CONFIG.MAX_OBJECT_SIZE);
-    
+
     // For small objects, use a square root distribution to favor smaller sizes
     let size;
     if (smallObjects.includes(objectDef)) {
@@ -193,7 +193,7 @@ class ObjectManager {
     const MAX_ATTEMPTS = 50; // Maximum number of attempts to find non-overlapping position
     const playableArea = window.GAME_CONFIG.PLAYABLE_AREA;
     const maxCoord = Math.min(playableArea, window.GAME_CONFIG.MAP_SIZE / 2 - size);
-    
+
     // Determine effective radius for collision checks based on geometry type
     let effectiveRadius = size;
     if (geometryType === 'box') {
@@ -201,13 +201,13 @@ class ObjectManager {
     } else if (geometryType === 'cone' || geometryType === 'cylinder') {
       effectiveRadius = size * 0.5; // Base radius
     }
-    
+
     // Get player position
     let playerPosition = null;
     if (this.scene.getObjectByName('playerSphere')) {
       playerPosition = this.scene.getObjectByName('playerSphere').position.clone();
     }
-    
+
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       // Generate random position
       const position = {
@@ -215,42 +215,42 @@ class ObjectManager {
         y: 0, // Will be adjusted in _createObject
         z: randomInRange(-maxCoord, maxCoord)
       };
-      
+
       // Check distance from player (avoid spawning too close to player)
       if (playerPosition) {
         const distToPlayer = Math.sqrt(
-          Math.pow(position.x - playerPosition.x, 2) + 
+          Math.pow(position.x - playerPosition.x, 2) +
           Math.pow(position.z - playerPosition.z, 2)
         );
-        
+
         // Don't spawn too close to player (minimum distance = player size + object size + buffer)
         const minPlayerDist = playerSize + effectiveRadius + 5;
         if (distToPlayer < minPlayerDist) {
           continue; // Too close to player, try again
         }
       }
-      
+
       // Check for overlap with existing objects
       let hasOverlap = false;
-      
+
       for (const object of this.objects) {
         // Get object position and effective radius
         const objPos = object.position;
         let objRadius = object.userData.size;
-        
+
         // Adjust radius based on object type for better collision calculation
         if (object.userData.type === 'box') {
           objRadius *= 0.7; // Approximate for box
         } else if (object.userData.type === 'cone' || object.userData.type === 'cylinder') {
           objRadius *= 0.5; // Base radius
         }
-        
+
         // Calculate distance between centers
         const distance = Math.sqrt(
-          Math.pow(position.x - objPos.x, 2) + 
+          Math.pow(position.x - objPos.x, 2) +
           Math.pow(position.z - objPos.z, 2)
         );
-        
+
         // Check if objects would overlap
         // Add small buffer (0.5) to prevent objects from being too close
         if (distance < (effectiveRadius + objRadius + 0.5)) {
@@ -258,13 +258,13 @@ class ObjectManager {
           break;
         }
       }
-      
+
       // If no overlap found, return this position
       if (!hasOverlap) {
         return position;
       }
     }
-    
+
     // If we've reached here, we couldn't find a valid position after MAX_ATTEMPTS
     return null;
   }
@@ -273,34 +273,45 @@ class ObjectManager {
     let geometry, mesh;
     // Account for ground position at y = -0.5
     const groundLevel = -0.5;
-    
+
     // Y offset will be calculated based on geometry type
     let yOffset = 0;
+    // Store collision radius for better collision detection
+    let collisionRadius = size;
 
     switch (type) {
       case 'box':
         geometry = new THREE.BoxGeometry(size, size, size);
         // For a box, the bottom is at -size/2 from center
         yOffset = size / 2;
+        // Box uses 0.7 of its size as effective collision radius
+        collisionRadius = size * 0.8;
         break;
       case 'sphere':
         geometry = new THREE.SphereGeometry(size, 16, 16);
         // For a sphere, the bottom is at -radius from center
         yOffset = size;
+        // Sphere uses its exact radius for collision
+        collisionRadius = size;
         break;
       case 'cone':
         geometry = new THREE.ConeGeometry(size, size * 2, 16);
         // For a cone, the bottom is at -height/2 from center
         yOffset = size; // half of size*2
+        // Cone uses 0.6 of its size as effective collision radius
+        collisionRadius = size * 0.6;
         break;
       case 'cylinder':
         geometry = new THREE.CylinderGeometry(size, size, size * 2, 16);
         // For a cylinder, the bottom is at -height/2 from center
         yOffset = size; // half of size*2
+        // Cylinder uses 0.8 of its size as effective collision radius (increased from 0.6)
+        collisionRadius = size * 0.8;
         break;
       default:
         geometry = new THREE.SphereGeometry(size, 16, 16);
         yOffset = size;
+        collisionRadius = size;
     }
 
     const material = new THREE.MeshStandardMaterial({
@@ -310,17 +321,18 @@ class ObjectManager {
     });
 
     mesh = new THREE.Mesh(geometry, material);
-    
+
     // Position y is groundLevel + yOffset to place object on the ground
     mesh.position.set(position.x, groundLevel + yOffset, position.z);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
 
     // Add metadata to the mesh for collision detection
     mesh.userData = {
       type: type,
       size: size,
-      canBeAbsorbed: true
+      collisionRadius: collisionRadius,
+      canBeAbsorbed: true,
+      // We no longer need velocity since objects are static
+      isStatic: true
     };
 
     return mesh;
@@ -342,26 +354,26 @@ class ObjectManager {
     if (!window.GAME_CONFIG.RESPAWN_OBJECTS) {
       return;
     }
-    
+
     // Determine how many objects we want - independent of player size
     const desiredObjectCount = Math.min(window.GAME_CONFIG.MAX_OBJECTS_COUNT, window.GAME_CONFIG.INITIAL_OBJECTS_COUNT);
 
     // Spawn additional objects if needed
     const objectsToSpawn = desiredObjectCount - this.objects.length;
-    
+
     // Add retry mechanism - with max attempts to prevent infinite loops in crowded scenes
     const maxSpawnAttempts = objectsToSpawn * 2; // Allow up to 2x attempts
     let successfulSpawns = 0;
     let totalAttempts = 0;
-    
+
     while (successfulSpawns < objectsToSpawn && totalAttempts < maxSpawnAttempts) {
       const newObject = this.spawnRandomObject(playerSize);
       totalAttempts++;
-      
+
       if (newObject) {
         successfulSpawns++;
       }
-      
+
       // If we're having trouble spawning objects (scene may be too crowded),
       // bail out early to prevent performance issues
       if (totalAttempts >= 10 && successfulSpawns === 0) {
@@ -380,7 +392,7 @@ class ObjectManager {
 
     // Use an array to collect objects to remove
     const objectsToRemove = [];
-    
+
     // Calculate distance threshold based on playable area
     const playableArea = window.GAME_CONFIG.PLAYABLE_AREA;
     const cullDistanceThreshold = playableArea * playableArea; // Square it for distanceSq comparison

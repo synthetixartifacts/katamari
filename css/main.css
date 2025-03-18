@@ -66,6 +66,20 @@ body {
   font-size: 1.2rem;
   display: none;
   z-index: 5;
+  min-width: 180px;
+}
+
+#size-display, #items-display, #timer-display {
+  margin-bottom: 0.5rem;
+}
+
+#minimap-container {
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+#player-indicator {
+  transition: all 0.2s ease-out;
 }
 
 /* Mobile controls */

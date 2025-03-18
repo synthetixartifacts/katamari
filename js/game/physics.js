@@ -26,20 +26,8 @@ class Physics {
       const objectPosition = object.position.clone();
       const distance = playerPosition.distanceTo(objectPosition);
 
-      // For sphere objects, use their radius
-      let objectRadius = object.userData.size;
-
-      // Adjust the effective radius based on object type for better collision feel
-      if (object.userData.type === 'box') {
-        // For boxes, use half the size as radius (approximation)
-        objectRadius = object.userData.size * 0.5;
-      } else if (object.userData.type === 'cone') {
-        // For cones, use the base radius
-        objectRadius = object.userData.size * 0.5;
-      } else if (object.userData.type === 'cylinder') {
-        // For cylinders, use the radius
-        objectRadius = object.userData.size * 0.5;
-      }
+      // Use the pre-calculated collision radius for better consistency
+      const objectRadius = object.userData.collisionRadius || object.userData.size;
 
       // Check if collision occurs (spheres overlap)
       if (distance < playerRadius + objectRadius) {
@@ -99,7 +87,8 @@ class Physics {
     }
   }
 
-  // New method to handle physics for collision with larger objects
+  // Updated method to handle physics for collision with larger objects
+  // Objects remain static, only the player is affected
   handleLargerObjectCollisions(playerSphere, largerCollisions, playerRadius) {
     // Calculate push direction and force based on object size and distance
     largerCollisions.forEach(collision => {
@@ -118,50 +107,36 @@ class Physics {
           .subVectors(playerSphere.position, objectPosition)
           .normalize();
 
-        // Calculate push force (larger objects push more, but with a cap)
-        // Use logarithmic scaling for very large objects to prevent instant pushbacks
+        // Calculate push force with improved scaling for more consistent feel
         const sizeFactor = Math.min(object.userData.size / playerRadius, 10);
-        const pushForceFactor = Math.log(sizeFactor + 1) * 0.05;
+        
+        // Use a stronger push force to ensure player cannot pass through larger objects
+        const pushForceFactor = 0.2 + (Math.log(sizeFactor + 1) * 0.1);
+        
+        // Scale force by overlap amount for more realistic collision response
         const pushForce = overlap * pushForceFactor;
 
         // Apply force to player velocity
         playerSphere.userData.velocity.x += pushDirection.x * pushForce;
         playerSphere.userData.velocity.z += pushDirection.z * pushForce;
         
-        // Move larger objects when hit by player
-        // The ability to move larger objects depends on player size
-        // Calculate a size ratio to determine if/how much the larger object should move
-        const sizeRatio = playerRadius / object.userData.size;
+        // Immediate position correction to prevent clipping through objects
+        // This helps ensure the player doesn't pass through objects
+        const positionCorrection = Math.min(overlap * 0.5, 0.2); // Limit correction to avoid jumps
+        playerSphere.position.x += pushDirection.x * positionCorrection;
+        playerSphere.position.z += pushDirection.z * positionCorrection;
         
-        // Only move the object if player is at least 20% of the object's size
-        // This makes it possible to move even very large objects
-        if (sizeRatio >= 0.2) {
-          // Initialize velocity property for the object if it doesn't exist
-          if (!object.userData.velocity) {
-            object.userData.velocity = new THREE.Vector3();
-          }
-          
-          // Calculate force to apply to the larger object
-          // Use a logarithmic scale for better gameplay with huge objects
-          const impactFactor = Math.log10(sizeRatio * 10 + 1) * 0.05;
-          const objectPushForce = overlap * impactFactor;
-          
-          // Get player velocity magnitude for additional force
-          const playerSpeed = new THREE.Vector3(
-            playerSphere.userData.velocity.x,
-            0,
-            playerSphere.userData.velocity.z
-          ).length();
-          
-          // Apply force to object in the opposite direction (from player to object)
-          const reverseDirection = pushDirection.clone().negate();
-          
-          // Apply force to object velocity
-          object.userData.velocity.x += reverseDirection.x * objectPushForce * playerSpeed;
-          object.userData.velocity.z += reverseDirection.z * objectPushForce * playerSpeed;
-          
-          // Dampen the object's velocity (friction)
-          object.userData.velocity.multiplyScalar(0.85);
+        // Add a small upward force when hitting larger objects at high speed
+        // This creates a more dynamic feel to the collision
+        const speed = new THREE.Vector3(
+          playerSphere.userData.velocity.x,
+          0,
+          playerSphere.userData.velocity.z
+        ).length();
+        
+        if (speed > 5 && sizeFactor > 2) {
+          // Add a small bounce effect for high-speed collisions with large objects
+          playerSphere.userData.velocity.y += speed * 0.05;
         }
       }
     });
