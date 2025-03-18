@@ -24,9 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the game controller
     const game = new GameController();
 
-    // Expose game object for debugging
+    // Always expose game object for debugging
+    window.debugGame = game;
+    console.log('Game controller initialized and exposed globally as window.debugGame');
+
     if (window.debugLog) {
-      window.debugGame = game;
       window.debugLog('Game controller initialized successfully', 'success');
     }
 
@@ -46,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Start the game
         game.start();
+
+        // Force an immediate extra render to ensure scene is fully displayed
+        game.renderer.render(game.scene, game.cameraController.camera);
 
         if (window.debugLog) {
           window.debugLog('Game started successfully', 'success');

@@ -27,6 +27,7 @@ class GameController {
     this.cameraController = null;
     this.inputHandler = null;
     this.hudController = null;
+    this.sceneDecor = null; // New property for scene decorations
 
     // DOM elements
     this.mobileControls = document.getElementById('mobile-controls');
@@ -47,7 +48,8 @@ class GameController {
 
     // Create Three.js scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+    // Remove the background color as it will be replaced by our sky dome
+    // this.scene.background = new THREE.Color(0x87CEEB); // Sky blue background
 
     // Create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -77,6 +79,9 @@ class GameController {
     this.cameraController = new CameraController(this.sphereSize);
     this.scene.add(this.cameraController.camera);
 
+    // Initialize scene decorations
+    this.sceneDecor = new SceneDecor(this.scene);
+
     // Initialize other modules
     this.objectManager = new ObjectManager(this.scene);
     this.physics = new Physics();
@@ -92,15 +97,20 @@ class GameController {
 
   _setupLights() {
     // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Increased intensity
     this.scene.add(ambientLight);
 
-    // Add directional light
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 20, 10);
-    // Removed shadow casting
-
+    // Add directional light (sun light)
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0); // Increased intensity
+    dirLight.position.set(500, 800, -800); // Position to match the sun
     this.scene.add(dirLight);
+    
+    // Add hemisphere light for better sky-ground lighting
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x7CFC00, 0.6);
+    hemiLight.position.set(0, 500, 0);
+    this.scene.add(hemiLight);
+    
+    console.log('Game: Enhanced lighting setup complete');
   }
 
   _createGround() {
@@ -196,10 +206,22 @@ class GameController {
     // Update input & movement
     this.inputHandler.update(delta);
 
+    // Get all collidable objects, including mountain barriers
+    const collidableObjects = [...this.objectManager.objects];
+    
+    // Add mountain barriers to collidable objects if they exist
+    if (this.sceneDecor && this.sceneDecor.decorElements.mountains) {
+      this.sceneDecor.decorElements.mountains.forEach(mountain => {
+        if (mountain.userData.isBarrier) {
+          collidableObjects.push(mountain);
+        }
+      });
+    }
+
     // Check collisions
     const collisions = this.physics.checkCollisions(
       this.playerSphere,
-      this.objectManager.objects,
+      collidableObjects,
       this.sphereSize
     );
 
@@ -213,6 +235,9 @@ class GameController {
 
     // Update camera position
     this.cameraController.update(this.playerSphere, delta);
+    
+    // Update scene decorations
+    this.sceneDecor.update(delta);
     
     // Update minimap with player position
     if (this.hudController) {

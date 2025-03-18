@@ -15,6 +15,9 @@ class Physics {
 
     // Array to store larger objects that can't be absorbed but cause collision
     const largerCollisions = [];
+    
+    // Array to store barrier objects (mountains) that block movement
+    const barrierCollisions = [];
 
     // Create bounding sphere for player
     const playerPosition = playerSphere.position.clone();
@@ -22,6 +25,15 @@ class Physics {
 
     // Check each object for collision
     objects.forEach(object => {
+      // Skip objects marked as barriers - they're handled separately
+      if (object.userData.isBarrier) {
+        // Check if player is colliding with a barrier (mountain)
+        if (this.checkBarrierCollision(playerSphere, object, playerRadius)) {
+          barrierCollisions.push(object);
+        }
+        return;
+      }
+      
       // Calculate distance between centers
       const objectPosition = object.position.clone();
       const distance = playerPosition.distanceTo(objectPosition);
@@ -50,6 +62,11 @@ class Physics {
     // Handle physics for larger objects
     if (largerCollisions.length > 0) {
       this.handleLargerObjectCollisions(playerSphere, largerCollisions, playerRadius);
+    }
+    
+    // Handle barrier collisions (mountains)
+    if (barrierCollisions.length > 0) {
+      this.handleBarrierCollisions(playerSphere, barrierCollisions);
     }
 
     return collisions;
@@ -137,6 +154,115 @@ class Physics {
         if (speed > 5 && sizeFactor > 2) {
           // Add a small bounce effect for high-speed collisions with large objects
           playerSphere.userData.velocity.y += speed * 0.05;
+        }
+      }
+    });
+  }
+  
+  /**
+   * Check if the player is colliding with a barrier (mountain)
+   * Uses box collision for more reliable boundary enforcement
+   */
+  checkBarrierCollision(playerSphere, barrier, playerRadius) {
+    // Create a bounding box for the barrier if it doesn't exist
+    if (!barrier.geometry.boundingBox) {
+      barrier.geometry.computeBoundingBox();
+    }
+    
+    // Get barrier's bounding box in world space
+    const barrierBox = barrier.geometry.boundingBox.clone();
+    barrierBox.applyMatrix4(barrier.matrixWorld);
+    
+    // Check if sphere intersects box using precise sphere vs. oriented box check
+    const playerPos = playerSphere.position.clone();
+    
+    // Transform player position to barrier's local space
+    const inverseMatrix = new THREE.Matrix4().copy(barrier.matrixWorld).invert();
+    const localPlayerPos = playerPos.clone().applyMatrix4(inverseMatrix);
+    
+    // Get the box dimensions from the geometry
+    const boxHalfWidth = barrier.geometry.parameters.width / 2;
+    const boxHalfHeight = barrier.geometry.parameters.height / 2;
+    const boxHalfDepth = barrier.geometry.parameters.depth / 2;
+    
+    // Find closest point on box to sphere center (in local space)
+    const closestPoint = new THREE.Vector3(
+      Math.max(-boxHalfWidth, Math.min(boxHalfWidth, localPlayerPos.x)),
+      Math.max(-boxHalfHeight, Math.min(boxHalfHeight, localPlayerPos.y)),
+      Math.max(-boxHalfDepth, Math.min(boxHalfDepth, localPlayerPos.z))
+    );
+    
+    // Convert closest point back to world space
+    const worldClosestPoint = closestPoint.clone().applyMatrix4(barrier.matrixWorld);
+    
+    // Calculate distance from closest point to sphere center
+    const distance = playerPos.distanceTo(worldClosestPoint);
+    
+    // Collision occurs if distance is less than sphere radius
+    return distance < playerRadius;
+  }
+  
+  /**
+   * Handle collisions with barriers (mountains)
+   * Ensures player cannot pass through the mountain boundaries
+   */
+  handleBarrierCollisions(playerSphere, barriers) {
+    const playerPos = playerSphere.position.clone();
+    const velocity = playerSphere.userData.velocity;
+    const playerRadius = playerSphere.geometry.parameters.radius;
+    
+    barriers.forEach(barrier => {
+      if (!barrier.geometry.boundingBox) {
+        barrier.geometry.computeBoundingBox();
+      }
+      
+      // Transform player position to barrier's local space for more accurate collision
+      const inverseMatrix = new THREE.Matrix4().copy(barrier.matrixWorld).invert();
+      const localPlayerPos = playerPos.clone().applyMatrix4(inverseMatrix);
+      
+      // Get the box dimensions from the geometry
+      const boxHalfWidth = barrier.geometry.parameters.width / 2;
+      const boxHalfHeight = barrier.geometry.parameters.height / 2;
+      const boxHalfDepth = barrier.geometry.parameters.depth / 2;
+      
+      // Find closest point on box to sphere center (in local space)
+      const closestPoint = new THREE.Vector3(
+        Math.max(-boxHalfWidth, Math.min(boxHalfWidth, localPlayerPos.x)),
+        Math.max(-boxHalfHeight, Math.min(boxHalfHeight, localPlayerPos.y)),
+        Math.max(-boxHalfDepth, Math.min(boxHalfDepth, localPlayerPos.z))
+      );
+      
+      // Convert closest point back to world space
+      const worldClosestPoint = closestPoint.clone().applyMatrix4(barrier.matrixWorld);
+      
+      // Calculate collision normal (direction from closest point to sphere center)
+      const collisionNormal = new THREE.Vector3().subVectors(playerPos, worldClosestPoint).normalize();
+      
+      // Calculate penetration depth
+      const penetrationDepth = playerRadius - playerPos.distanceTo(worldClosestPoint);
+      
+      // Only respond if there's actual penetration
+      if (penetrationDepth > 0) {
+        // Apply position correction based on penetration depth
+        // Move the player out along the collision normal
+        playerSphere.position.x += collisionNormal.x * (penetrationDepth * 1.01); // Slight extra push to avoid sticking
+        playerSphere.position.z += collisionNormal.z * (penetrationDepth * 1.01);
+        
+        // Calculate reflection of velocity vector
+        const currentVelocity = new THREE.Vector3(velocity.x, 0, velocity.z);
+        const dot = currentVelocity.dot(collisionNormal);
+        
+        // Only reflect if moving toward the barrier
+        if (dot < 0) {
+          // Reflection formula: v' = v - 2(v·n)n
+          const reflectedVelocity = new THREE.Vector3();
+          reflectedVelocity.copy(currentVelocity).sub(
+            collisionNormal.clone().multiplyScalar(2 * dot)
+          );
+          
+          // Apply reflected velocity with some energy loss (bounce dampening)
+          velocity.x = reflectedVelocity.x * 0.7; // 30% energy loss on bounce
+          velocity.z = reflectedVelocity.z * 0.7;
         }
       }
     });
