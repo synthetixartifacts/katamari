@@ -201,6 +201,10 @@ class ObjectManager {
       effectiveRadius = size * 0.5; // Base radius
     }
 
+    // Create a safety margin to prevent objects from spawning too close to the boundary
+    const safetyMargin = effectiveRadius + 1;
+    const maxSpawnRadius = playableRadius - safetyMargin;
+
     // Get player position
     let playerPosition = null;
     if (this.scene.getObjectByName('playerSphere')) {
@@ -210,7 +214,7 @@ class ObjectManager {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       // Generate random position in a circle
       const angle = Math.random() * Math.PI * 2;
-      const radiusRandom = Math.random() * (playableRadius - effectiveRadius);
+      const radiusRandom = Math.random() * maxSpawnRadius;
       const position = {
         x: radiusRandom * Math.cos(angle),
         y: 0, // Will be adjusted in _createObject

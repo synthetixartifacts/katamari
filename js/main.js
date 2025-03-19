@@ -7,7 +7,7 @@ window.GAME_CONFIG = {
   INITIAL_OBJECTS_COUNT: 1500, // Number of objects initially spawned
   MAX_OBJECTS_COUNT: 1500, // Maximum number of objects at any time
   MAP_SIZE: 1000, // Size of the entire map (ground plane)
-  PLAYABLE_AREA: 800, // Diameter of circular playable area that follows the mountains
+  PLAYABLE_AREA: 1000, // Diameter of circular playable area that follows the mountains
   MAX_OBJECT_SIZE: 1, // Maximum size of spawnable objects in cm
   RESPAWN_OBJECTS: true, // Whether to respawn objects after they are absorbed
   MAX_SCREEN_PERCENTAGE: 30, // Maximum percentage of screen height the sphere should occupy (0-100)

@@ -448,7 +448,7 @@ class SceneDecor {
     const radius = 800;
     const thickness = 15;
     const segments = 50;
-    const arcAngle = Math.PI / 2; // Half circle rainbow
+    const arcAngle = Math.PI / 3; // Reduced arc angle for better ground contact
 
     // Rainbow colors - vibrant spectrum
     const colors = [
@@ -491,10 +491,26 @@ class SceneDecor {
       this.decorElements.rainbow.add(rainbowBand);
     }
 
-    // Position the rainbow in the scene
-    this.decorElements.rainbow.position.set(-400, -100, -1200);
-    // Rotate to make it an arc starting from the ground
-    this.decorElements.rainbow.rotation.set(0, Math.PI / 3, 0);
+    // Get the playable area radius from game config
+    const playAreaRadius = window.GAME_CONFIG.MAP_SIZE / 2;
+
+    // Calculate a suitable position for the rainbow to start and end at mountains
+    const position = new THREE.Vector3(0, 0, 0); // Rainbow sits on the ground
+    const angle = Math.PI / 4; // 45 degrees across the map
+    const distance = playAreaRadius * 0.75; // Distance from center
+
+    // Position the rainbow in the scene so it spans across the map
+    // Ground level positioning to ensure it aligns with the floor
+    this.decorElements.rainbow.position.set(0, 0, 0);
+
+    // Rotate the rainbow to properly align with ground
+    // First around Y to point toward the right mountains
+    // Then rotate around X to lay the arc properly across the ground
+    this.decorElements.rainbow.rotation.set(Math.PI / 2, angle, 0);
+
+    // Scale to make sure it spans between mountains
+    const rainbowScale = playAreaRadius * 1.2 / radius;
+    this.decorElements.rainbow.scale.set(rainbowScale, rainbowScale, rainbowScale);
 
     // Add animation properties
     this.decorElements.rainbow.userData = {
@@ -511,7 +527,7 @@ class SceneDecor {
   }
 
   /**
-   * Updates the rainbow with shimmer and pulse animation
+   * Updates the rainbow animation
    * @param {number} delta - Time elapsed since last update
    */
   _updateRainbow(delta) {
@@ -526,8 +542,8 @@ class SceneDecor {
     const pulseOpacity = rainbow.userData.baseOpacity +
       Math.sin(rainbow.userData.animationPhase) * rainbow.userData.opacityVariation;
 
-    // Apply subtle rotation animation
-    rainbow.rotation.z += delta * 0.02;
+    // Apply very subtle rotation animation - reduced from original to be less distracting
+    rainbow.rotation.z += delta * 0.005;
 
     // Update each band with varying effects
     rainbow.children.forEach((band, index) => {
@@ -538,10 +554,10 @@ class SceneDecor {
       // Apply varying opacity with shimmer
       band.material.opacity = Math.max(0.2, pulseOpacity + shimmerFactor * 0.1);
 
-      // Subtle color variation for shimmer effect
+      // Subtle color variation for shimmer effect - reduced variation for subtlety
       const hue = (index / rainbow.children.length);
-      const saturation = 0.8 + shimmerFactor * 0.2;
-      const lightness = 0.5 + shimmerFactor * 0.1;
+      const saturation = 0.9 + shimmerFactor * 0.1; // Less variation in saturation
+      const lightness = 0.5 + shimmerFactor * 0.05; // Less variation in lightness
 
       band.material.color.setHSL(hue, saturation, lightness);
     });
@@ -634,6 +650,7 @@ class SceneDecor {
   update(delta) {
     this._updateClouds(delta);
     this._updateSun(delta);
+    this._updateRainbow(delta);
   }
 
   /**

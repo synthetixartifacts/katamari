@@ -115,11 +115,13 @@ class GameController {
   }
 
   _createGround() {
-    // Create ground plane using the configurable map size
-    const mapSize = window.GAME_CONFIG.MAP_SIZE;
-    const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
+    // Create a circular ground plane that matches the playable area
+    const playableRadius = window.GAME_CONFIG.PLAYABLE_AREA / 2;
+    
+    // Create circular ground using a disc geometry
+    const groundGeometry = new THREE.CircleGeometry(playableRadius, 64); // 64 segments for smooth circle
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4CAF50,  // Greener grass color (was 0x2E8B57)
+      color: 0x4CAF50,  // Greener grass color
       roughness: 0.8,
       metalness: 0.2
     });
@@ -127,12 +129,10 @@ class GameController {
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
     ground.position.y = -0.5;
-    // Removed receiveShadow
-
+    
     this.scene.add(ground);
     
-    // Add circular boundary to indicate the playable area
-    const playableRadius = window.GAME_CONFIG.PLAYABLE_AREA / 2;
+    // Add circular boundary to indicate the playable area edge
     const boundaryGeometry = new THREE.RingGeometry(
       playableRadius - 1, // Inner radius slightly smaller
       playableRadius,     // Outer radius
