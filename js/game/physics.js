@@ -93,6 +93,37 @@ class Physics {
     playerSphere.position.x += velocity.x * delta;
     playerSphere.position.y += velocity.y * delta;
     playerSphere.position.z += velocity.z * delta;
+    
+    // Check circular boundary constraints
+    const playableRadius = window.GAME_CONFIG.PLAYABLE_AREA / 2;
+    const sphereRadius = playerSphere.geometry.parameters.radius;
+    const safeBoundary = playableRadius - sphereRadius;
+    
+    // Calculate distance from center
+    const distFromCenter = Math.sqrt(
+      playerSphere.position.x * playerSphere.position.x + 
+      playerSphere.position.z * playerSphere.position.z
+    );
+    
+    // If outside playable area, push back in
+    if (distFromCenter > safeBoundary) {
+      // Calculate normalized direction vector from center to sphere
+      const dirX = playerSphere.position.x / distFromCenter;
+      const dirZ = playerSphere.position.z / distFromCenter;
+      
+      // Place sphere at boundary edge
+      playerSphere.position.x = dirX * safeBoundary;
+      playerSphere.position.z = dirZ * safeBoundary;
+      
+      // Reflect velocity (bounce off boundary with reduced energy)
+      const normalDotVelocity = dirX * velocity.x + dirZ * velocity.z;
+      velocity.x -= 1.8 * normalDotVelocity * dirX;
+      velocity.z -= 1.8 * normalDotVelocity * dirZ;
+      
+      // Apply additional friction for hitting boundary
+      velocity.x *= 0.8;
+      velocity.z *= 0.8;
+    }
 
     // Simple sphere rotation based on movement
     if (Math.abs(velocity.x) > 0.01 || Math.abs(velocity.z) > 0.01) {

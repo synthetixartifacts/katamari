@@ -191,9 +191,8 @@ class ObjectManager {
    */
   _findNonOverlappingPosition(size, geometryType, playerSize) {
     const MAX_ATTEMPTS = 50; // Maximum number of attempts to find non-overlapping position
-    const playableArea = window.GAME_CONFIG.PLAYABLE_AREA;
-    const maxCoord = Math.min(playableArea, window.GAME_CONFIG.MAP_SIZE / 2 - size);
-
+    const playableRadius = window.GAME_CONFIG.PLAYABLE_AREA / 2; // Using radius for circular play area
+    
     // Determine effective radius for collision checks based on geometry type
     let effectiveRadius = size;
     if (geometryType === 'box') {
@@ -209,11 +208,13 @@ class ObjectManager {
     }
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      // Generate random position
+      // Generate random position in a circle
+      const angle = Math.random() * Math.PI * 2;
+      const radiusRandom = Math.random() * (playableRadius - effectiveRadius);
       const position = {
-        x: randomInRange(-maxCoord, maxCoord),
+        x: radiusRandom * Math.cos(angle),
         y: 0, // Will be adjusted in _createObject
-        z: randomInRange(-maxCoord, maxCoord)
+        z: radiusRandom * Math.sin(angle)
       };
 
       // Check distance from player (avoid spawning too close to player)

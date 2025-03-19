@@ -7,11 +7,12 @@ window.GAME_CONFIG = {
   INITIAL_OBJECTS_COUNT: 1500, // Number of objects initially spawned
   MAX_OBJECTS_COUNT: 1500, // Maximum number of objects at any time
   MAP_SIZE: 1000, // Size of the entire map (ground plane)
-  PLAYABLE_AREA: 400, // Size of the area where objects can spawn
+  PLAYABLE_AREA: 800, // Diameter of circular playable area that follows the mountains
   MAX_OBJECT_SIZE: 1, // Maximum size of spawnable objects in cm
   RESPAWN_OBJECTS: true, // Whether to respawn objects after they are absorbed
   MAX_SCREEN_PERCENTAGE: 30, // Maximum percentage of screen height the sphere should occupy (0-100)
-  CAMERA_ZOOM_RATE: 1.5 // Multiplier for camera distance relative to sphere size
+  CAMERA_ZOOM_RATE: 1.5, // Multiplier for camera distance relative to sphere size
+  MOUNTAIN_SCALE: 2.5 // Scale factor for mountains (higher = larger mountains)
 };
 
 // Wait for DOM to be fully loaded

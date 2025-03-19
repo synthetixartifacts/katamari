@@ -85,19 +85,20 @@ class SceneDecor {
     // Create a bright glowing sun - using a sphere instead of a circle
     const sunGeometry = new THREE.SphereGeometry(150, 32, 32);
     const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
-      emissive: 0xffff00,
-      emissiveIntensity: 1,
+      color: 0xFFFFC5, // Softer yellow/white instead of pure yellow (was 0xFFFF00)
+      emissive: 0xFFFFC5,
+      emissiveIntensity: 0.9,
     });
 
     this.decorElements.sun = new THREE.Mesh(sunGeometry, sunMaterial);
-    this.decorElements.sun.position.set(1000, 800, -1500);
+    // Lower the sun position
+    this.decorElements.sun.position.set(1000, 500, -1500);
     this.scene.add(this.decorElements.sun);
 
     // Add sun glow effect as a larger sphere
     const sunGlowGeometry = new THREE.SphereGeometry(220, 32, 32);
     const sunGlowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffffa0,
+      color: 0xFFFFF0, // Almost white glow with just a hint of yellow (was 0xFFFFA0)
       transparent: true,
       opacity: 0.4,
     });
@@ -129,6 +130,9 @@ class SceneDecor {
     // Snow color for mountain tops
     const snowColor = new THREE.Color(0xffffff);
 
+    // Get mountain scale from game config (default to 1 if not defined)
+    const mountainScale = window.GAME_CONFIG.MOUNTAIN_SCALE || 1;
+
     // Determine playable area border - use MAP_SIZE from GAME_CONFIG
     const playAreaRadius = window.GAME_CONFIG.MAP_SIZE / 2;
     const mountainBorderDistance = playAreaRadius; // Exactly at the border of the play area
@@ -148,15 +152,15 @@ class SceneDecor {
       // Create rectangular base with uniform width for each segment
       const segmentArcLength = segmentAngle * 1.1; // Slight overlap to avoid gaps
       const segmentWidth = mountainBorderDistance * segmentArcLength;
-      const segmentDepth = 20; // Fixed depth for consistent border barrier
+      const segmentDepth = 20 * mountainScale; // Scale the depth of mountains
 
       // More varied height - some mountains taller than others
-      // Original maxHeight was 20, now we allow up to 35 for some mountains
+      // Apply the scale factor to all mountain heights
       const mountainVariety = Math.random(); // 0-1 value to determine mountain type
       const maxHeight =
         mountainVariety > 0.7
-          ? 25 + Math.random() * 10 // Taller mountains (25-35)
-          : 15 + Math.random() * 10; // Regular mountains (15-25)
+          ? (25 + Math.random() * 10) * mountainScale // Taller mountains (25-35) * scale
+          : (15 + Math.random() * 10) * mountainScale; // Regular mountains (15-25) * scale
 
       // Create the rectangular base vertices
       const innerRadius = mountainBorderDistance - segmentDepth;
@@ -175,7 +179,7 @@ class SceneDecor {
       const outerPoints = [];
 
       // Generate points along the arc for the base
-      const arcSteps = 12; // Detail level of the curve
+      const arcSteps = 12;
       for (let j = 0; j <= arcSteps; j++) {
         const pointAngle =
           segmentBaseAngle +
@@ -207,13 +211,14 @@ class SceneDecor {
         const peakIndex = Math.floor((p / (peaksCount - 1)) * arcSteps);
 
         // More variance in peak heights within each segment
+        // Apply scale factor to all peak heights
         let peakHeight;
         if (p === Math.floor(peaksCount / 2) && mountainVariety > 0.7) {
           // Make the middle peak of some segments significantly taller
           peakHeight = maxHeight * (0.9 + Math.random() * 0.1);
         } else {
           // Other peaks varied but not as tall
-          peakHeight = 10 + Math.random() * (maxHeight * 0.8);
+          peakHeight = (10 + Math.random() * (maxHeight * 0.8));
         }
 
         // Calculate position between inner and outer ring
@@ -395,7 +400,7 @@ class SceneDecor {
       const boxHeight = maxHeight * 1.5; // Slightly taller than mountains to prevent jumping over
       const boxDepth = segmentDepth;
 
-      // Create invisible barrier box
+      // Create invisible barrier box - also apply scaling to the barrier
       const barrierGeometry = new THREE.BoxGeometry(
         boxWidth,
         boxHeight,
@@ -434,69 +439,112 @@ class SceneDecor {
   }
 
   /**
-   * Creates a rainbow in the sky
+   * Creates a rainbow arc in the sky
    */
   _createRainbow() {
     console.log("SceneDecor: Creating rainbow");
-    // Create rainbow bands
-    const rainbowColors = [
+
+    // Rainbow parameters
+    const radius = 800;
+    const thickness = 15;
+    const segments = 50;
+    const arcAngle = Math.PI / 2; // Half circle rainbow
+
+    // Rainbow colors - vibrant spectrum
+    const colors = [
       0xff0000, // Red
-      0xff7f00, // Orange
+      0xff7700, // Orange
       0xffff00, // Yellow
       0x00ff00, // Green
-      0x0000ff, // Blue
-      0x4b0082, // Indigo
-      0x9400d3, // Violet
+      0x0077ff, // Blue
+      0x7700ff, // Indigo
+      0xff00ff  // Violet
     ];
 
-    const rainbowGroup = new THREE.Group();
-    const rainbowRadius = 400;
-    const tubeRadius = 10;
+    // Create a group to hold all the rainbow arcs
+    this.decorElements.rainbow = new THREE.Group();
 
-    // Create a simpler rainbow using arcs
-    for (let i = 0; i < rainbowColors.length; i++) {
-      const bandRadius = rainbowRadius - i * tubeRadius * 2;
-      const arc = new THREE.ArcCurve(
-        0,
-        0, // Center x, y
-        bandRadius, // Radius
-        0,
-        Math.PI, // Start angle, end angle
-        false // Counterclockwise
+    // Create each colored band of the rainbow
+    for (let i = 0; i < colors.length; i++) {
+      // Each band slightly smaller than the previous
+      const bandRadius = radius - (i * thickness);
+
+      // Create the arc geometry - partial torus (donut shape)
+      const rainbowGeometry = new THREE.TorusGeometry(
+        bandRadius,        // radius of the ring
+        thickness / 2,     // thickness of the tube
+        8,                 // tube segments
+        segments,          // radial segments
+        arcAngle           // arc angle
       );
 
-      const points = arc.getPoints(50);
-      const geometry = new THREE.BufferGeometry().setFromPoints(points);
-
-      // Convert the 2D points to 3D
-      const positions = new Float32Array(points.length * 3);
-      for (let j = 0; j < points.length; j++) {
-        positions[j * 3] = points[j].x;
-        positions[j * 3 + 1] = points[j].y;
-        positions[j * 3 + 2] = 0;
-      }
-
-      geometry.setAttribute(
-        "position",
-        new THREE.BufferAttribute(positions, 3)
-      );
-
-      const material = new THREE.LineBasicMaterial({
-        color: rainbowColors[i],
-        linewidth: 10,
+      // Create material with the rainbow color
+      const rainbowMaterial = new THREE.MeshBasicMaterial({
+        color: colors[i],
+        transparent: true,
+        opacity: 0.7,      // Slightly transparent
+        side: THREE.DoubleSide
       });
 
-      const rainbow = new THREE.Line(geometry, material);
-      rainbowGroup.add(rainbow);
+      // Create the mesh and add to the group
+      const rainbowBand = new THREE.Mesh(rainbowGeometry, rainbowMaterial);
+      this.decorElements.rainbow.add(rainbowBand);
     }
 
-    // Position the rainbow
-    rainbowGroup.position.set(0, 400, -700);
-    rainbowGroup.rotation.x = Math.PI / 2; // Rotate to be vertical
+    // Position the rainbow in the scene
+    this.decorElements.rainbow.position.set(-400, -100, -1200);
+    // Rotate to make it an arc starting from the ground
+    this.decorElements.rainbow.rotation.set(0, Math.PI / 3, 0);
 
-    this.decorElements.rainbow = rainbowGroup;
-    this.scene.add(rainbowGroup);
+    // Add animation properties
+    this.decorElements.rainbow.userData = {
+      animationPhase: 0,
+      pulseSpeed: 0.3,
+      baseOpacity: 0.7,
+      opacityVariation: 0.2,
+      shimmerSpeed: 0.5,
+      isVisible: true
+    };
+
+    this.scene.add(this.decorElements.rainbow);
     console.log("SceneDecor: Rainbow added to scene");
+  }
+
+  /**
+   * Updates the rainbow with shimmer and pulse animation
+   * @param {number} delta - Time elapsed since last update
+   */
+  _updateRainbow(delta) {
+    if (!this.decorElements.rainbow) return;
+
+    const rainbow = this.decorElements.rainbow;
+
+    // Update animation phase
+    rainbow.userData.animationPhase += delta * rainbow.userData.pulseSpeed;
+
+    // Calculate pulse effect (sinusoidal opacity variation)
+    const pulseOpacity = rainbow.userData.baseOpacity +
+      Math.sin(rainbow.userData.animationPhase) * rainbow.userData.opacityVariation;
+
+    // Apply subtle rotation animation
+    rainbow.rotation.z += delta * 0.02;
+
+    // Update each band with varying effects
+    rainbow.children.forEach((band, index) => {
+      // Shimmer effect - slightly different timing for each band
+      const shimmerOffset = index * 0.2;
+      const shimmerFactor = Math.sin(rainbow.userData.animationPhase * rainbow.userData.shimmerSpeed + shimmerOffset);
+
+      // Apply varying opacity with shimmer
+      band.material.opacity = Math.max(0.2, pulseOpacity + shimmerFactor * 0.1);
+
+      // Subtle color variation for shimmer effect
+      const hue = (index / rainbow.children.length);
+      const saturation = 0.8 + shimmerFactor * 0.2;
+      const lightness = 0.5 + shimmerFactor * 0.1;
+
+      band.material.color.setHSL(hue, saturation, lightness);
+    });
   }
 
   /**
@@ -559,8 +607,8 @@ class SceneDecor {
     }
 
     const cloudX = radius * Math.cos(angle);
-    // Lower the cloud height significantly
-    const cloudY = 100 + Math.random() * 50; // Lowered from 200-400 to 100-150
+    // Add much more variation to cloud heights (50-250 range)
+    const cloudY = 50 + Math.random() * 200;
     const cloudZ = radius * Math.sin(angle);
 
     cloud.position.set(cloudX, cloudY, cloudZ);
@@ -585,7 +633,6 @@ class SceneDecor {
    */
   update(delta) {
     this._updateClouds(delta);
-    this._updateRainbow(delta);
     this._updateSun(delta);
   }
 
@@ -633,22 +680,6 @@ class SceneDecor {
   }
 
   /**
-   * Updates the rainbow with slight animation
-   * @param {number} delta - Time elapsed since last update
-   */
-  _updateRainbow(delta) {
-    if (this.decorElements.rainbow) {
-      // Make the rainbow gently pulsate
-      const pulseFactor = Math.sin(Date.now() * 0.001) * 0.05 + 0.95;
-      this.decorElements.rainbow.scale.set(1, pulseFactor, 1);
-
-      // Slightly shift rainbow position based on time
-      const offsetY = Math.sin(Date.now() * 0.0003) * 5;
-      this.decorElements.rainbow.position.y = 400 + offsetY;
-    }
-  }
-
-  /**
    * Updates the sun with subtle animations
    * @param {number} delta - Time elapsed since last update
    */
@@ -673,12 +704,6 @@ class SceneDecor {
     );
     console.log("Mountains count:", this.decorElements.mountains.length);
     console.log("Clouds count:", this.decorElements.clouds.length);
-    console.log(
-      "Rainbow position:",
-      this.decorElements.rainbow
-        ? this.decorElements.rainbow.position
-        : "Not created"
-    );
     console.log(
       "Scene background color:",
       this.scene.background ? this.scene.background.getHexString() : "None"

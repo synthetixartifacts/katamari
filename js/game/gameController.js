@@ -96,17 +96,18 @@ class GameController {
   }
 
   _setupLights() {
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // Increased intensity
+    // Add ambient light - lower the yellow tint, more blue/white for natural daylight
+    const ambientLight = new THREE.AmbientLight(0xCCDDFF, 0.8); // Slightly blue tint for natural lighting
     this.scene.add(ambientLight);
 
-    // Add directional light (sun light)
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0); // Increased intensity
+    // Add directional light (sun light) - less intense yellow, more neutral
+    const dirLight = new THREE.DirectionalLight(0xFFFAF0, 0.9); // More neutral/white light
     dirLight.position.set(500, 800, -800); // Position to match the sun
     this.scene.add(dirLight);
     
     // Add hemisphere light for better sky-ground lighting
-    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x7CFC00, 0.6);
+    // This light helps create more realistic outdoor lighting with blue from sky, green from ground
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x4C9A2A, 0.6); // Sky blue top, green bottom
     hemiLight.position.set(0, 500, 0);
     this.scene.add(hemiLight);
     
@@ -118,7 +119,7 @@ class GameController {
     const mapSize = window.GAME_CONFIG.MAP_SIZE;
     const groundGeometry = new THREE.PlaneGeometry(mapSize, mapSize);
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x7CFC00,  // Light green
+      color: 0x4CAF50,  // Greener grass color (was 0x2E8B57)
       roughness: 0.8,
       metalness: 0.2
     });
@@ -129,6 +130,27 @@ class GameController {
     // Removed receiveShadow
 
     this.scene.add(ground);
+    
+    // Add circular boundary to indicate the playable area
+    const playableRadius = window.GAME_CONFIG.PLAYABLE_AREA / 2;
+    const boundaryGeometry = new THREE.RingGeometry(
+      playableRadius - 1, // Inner radius slightly smaller
+      playableRadius,     // Outer radius
+      64                  // Segments for smooth circle
+    );
+    
+    const boundaryMaterial = new THREE.MeshBasicMaterial({
+      color: 0xFFFFFF,  // White boundary
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.6
+    });
+    
+    const boundary = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+    boundary.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+    boundary.position.y = -0.49; // Slightly above ground to prevent z-fighting
+    
+    this.scene.add(boundary);
   }
 
   _createPlayerSphere() {
